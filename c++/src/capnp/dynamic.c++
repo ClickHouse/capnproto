@@ -67,34 +67,6 @@ inline uint64_t bitCast<uint64_t, double>(double value) {
   return result;
 }
 
-ElementSize elementSizeFor(schema::Type::Which elementType) {
-  switch (elementType) {
-    case schema::Type::VOID: return ElementSize::VOID;
-    case schema::Type::BOOL: return ElementSize::BIT;
-    case schema::Type::INT8: return ElementSize::BYTE;
-    case schema::Type::INT16: return ElementSize::TWO_BYTES;
-    case schema::Type::INT32: return ElementSize::FOUR_BYTES;
-    case schema::Type::INT64: return ElementSize::EIGHT_BYTES;
-    case schema::Type::UINT8: return ElementSize::BYTE;
-    case schema::Type::UINT16: return ElementSize::TWO_BYTES;
-    case schema::Type::UINT32: return ElementSize::FOUR_BYTES;
-    case schema::Type::UINT64: return ElementSize::EIGHT_BYTES;
-    case schema::Type::FLOAT32: return ElementSize::FOUR_BYTES;
-    case schema::Type::FLOAT64: return ElementSize::EIGHT_BYTES;
-
-    case schema::Type::TEXT: return ElementSize::POINTER;
-    case schema::Type::DATA: return ElementSize::POINTER;
-    case schema::Type::LIST: return ElementSize::POINTER;
-    case schema::Type::ENUM: return ElementSize::TWO_BYTES;
-    case schema::Type::STRUCT: return ElementSize::INLINE_COMPOSITE;
-    case schema::Type::INTERFACE: return ElementSize::POINTER;
-    case schema::Type::ANY_POINTER: KJ_FAIL_ASSERT("List(AnyPointer) not supported."); break;
-  }
-
-  // Unknown type.  Treat it as zero-size.
-  return ElementSize::VOID;
-}
-
 inline _::StructSize structSizeFromSchema(StructSchema schema) {
   auto node = schema.getProto().getStruct();
   return _::StructSize(
@@ -105,6 +77,35 @@ inline _::StructSize structSizeFromSchema(StructSchema schema) {
 }  // namespace
 
 // =======================================================================================
+
+
+ElementSize elementSizeFor(schema::Type::Which elementType) {
+switch (elementType) {
+  case schema::Type::VOID: return ElementSize::VOID;
+  case schema::Type::BOOL: return ElementSize::BIT;
+  case schema::Type::INT8: return ElementSize::BYTE;
+  case schema::Type::INT16: return ElementSize::TWO_BYTES;
+  case schema::Type::INT32: return ElementSize::FOUR_BYTES;
+  case schema::Type::INT64: return ElementSize::EIGHT_BYTES;
+  case schema::Type::UINT8: return ElementSize::BYTE;
+  case schema::Type::UINT16: return ElementSize::TWO_BYTES;
+  case schema::Type::UINT32: return ElementSize::FOUR_BYTES;
+  case schema::Type::UINT64: return ElementSize::EIGHT_BYTES;
+  case schema::Type::FLOAT32: return ElementSize::FOUR_BYTES;
+  case schema::Type::FLOAT64: return ElementSize::EIGHT_BYTES;
+
+  case schema::Type::TEXT: return ElementSize::POINTER;
+  case schema::Type::DATA: return ElementSize::POINTER;
+  case schema::Type::LIST: return ElementSize::POINTER;
+  case schema::Type::ENUM: return ElementSize::TWO_BYTES;
+  case schema::Type::STRUCT: return ElementSize::INLINE_COMPOSITE;
+  case schema::Type::INTERFACE: return ElementSize::POINTER;
+  case schema::Type::ANY_POINTER: KJ_FAIL_ASSERT("List(AnyPointer) not supported."); break;
+}
+
+// Unknown type.  Treat it as zero-size.
+return ElementSize::VOID;
+}
 
 kj::Maybe<EnumSchema::Enumerant> DynamicEnum::getEnumerant() const {
   auto enumerants = schema.getEnumerants();

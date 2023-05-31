@@ -128,6 +128,8 @@ template <> inline constexpr Style style<DynamicCapability>() { return Style::CA
 
 // -------------------------------------------------------------------
 
+ElementSize elementSizeFor(schema::Type::Which elementType);
+
 class DynamicEnum {
 public:
   DynamicEnum() = default;
@@ -221,12 +223,15 @@ public:
   bool has(kj::StringPtr name, HasMode mode = HasMode::NON_NULL) const;
   // Shortcuts to access fields by name.  These throw exceptions if no such field exists.
 
-private:
+ const _::StructReader & getReaderImpl() const { return reader; }
+
+ inline Reader(StructSchema schema, _::StructReader reader)
+     : schema(schema), reader(reader) {}
+
+ private:
   StructSchema schema;
   _::StructReader reader;
 
-  inline Reader(StructSchema schema, _::StructReader reader)
-      : schema(schema), reader(reader) {}
   Reader(StructSchema schema, const _::OrphanBuilder& orphan);
 
   bool isSetInUnion(StructSchema::Field field) const;
@@ -315,12 +320,15 @@ public:
 
   Reader asReader() const;
 
+  _::StructBuilder & getBuilderImpl() { return builder; }
+
+  inline Builder(StructSchema schema, _::StructBuilder builder)
+      : schema(schema), builder(builder) {}
+
 private:
   StructSchema schema;
   _::StructBuilder builder;
 
-  inline Builder(StructSchema schema, _::StructBuilder builder)
-      : schema(schema), builder(builder) {}
   Builder(StructSchema schema, _::OrphanBuilder& orphan);
 
   bool isSetInUnion(StructSchema::Field field);
@@ -396,11 +404,14 @@ public:
   inline Iterator begin() const { return Iterator(this, 0); }
   inline Iterator end() const { return Iterator(this, size()); }
 
+  const _::ListReader getReaderImpl() const { return reader; }
+
+  Reader(ListSchema schema, _::ListReader reader): schema(schema), reader(reader) {}
+
 private:
   ListSchema schema;
   _::ListReader reader;
 
-  Reader(ListSchema schema, _::ListReader reader): schema(schema), reader(reader) {}
   Reader(ListSchema schema, const _::OrphanBuilder& orphan);
 
   template <typename T, Kind k>
@@ -449,11 +460,14 @@ public:
 
   Reader asReader() const;
 
+  _::ListBuilder & getBuilderImpl() { return builder; }
+
+  Builder(ListSchema schema, _::ListBuilder builder): schema(schema), builder(builder) {}
+
 private:
   ListSchema schema;
   _::ListBuilder builder;
 
-  Builder(ListSchema schema, _::ListBuilder builder): schema(schema), builder(builder) {}
   Builder(ListSchema schema, _::OrphanBuilder& orphan);
 
   template <typename T, Kind k>
