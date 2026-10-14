@@ -20,6 +20,7 @@
 // THE SOFTWARE.
 
 #include "generics.h"
+#include "compiler.h"
 #include "parser.h"  // for expressionString()
 
 namespace capnp {
@@ -530,6 +531,8 @@ BrandedDecl BrandScope::decompileType(
 kj::Maybe<BrandedDecl> BrandScope::compileDeclExpression(
     Expression::Reader source, Resolver& resolver,
     ImplicitParams implicitMethodParams) {
+  checkStack();
+
   switch (source.which()) {
     case Expression::UNKNOWN:
       // Error reported earlier.

@@ -259,6 +259,14 @@ private:
   void load(const SchemaLoader& loader, uint64_t id) const override;
 };
 
+void setStackCheck(void (*check)());
+// Installs a process-wide hook that the compiler calls at each level of its recursion over
+// declarations and expressions. When the hook throws, compilation fails with an OVERLOADED
+// "Schema is nested too deeply." exception. No hook is installed by default.
+
+void checkStack();
+// Runs the hook installed by setStackCheck(), if any. Used internally by the compiler.
+
 }  // namespace compiler
 }  // namespace capnp
 

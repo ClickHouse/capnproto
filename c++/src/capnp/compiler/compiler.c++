@@ -26,6 +26,7 @@
 #include <kj/vector.h>
 #include <kj/debug.h>
 #include <capnp/message.h>
+#include <atomic>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -35,6 +36,21 @@ namespace capnp {
 namespace compiler {
 
 typedef std::unordered_map<uint64_t, Orphan<schema::Node::SourceInfo::Reader>> SourceInfoMap;
+
+namespace {
+std::atomic<void (*)()> stackCheck{nullptr};
+}  // namespace
+
+void setStackCheck(void (*check)()) {
+  stackCheck.store(check, std::memory_order_relaxed);
+}
+
+void checkStack() {
+  auto check = stackCheck.load(std::memory_order_relaxed);
+  if (check != nullptr && kj::runCatchingExceptions(check) != nullptr) {
+    kj::throwFatalException(KJ_EXCEPTION(OVERLOADED, "Schema is nested too deeply."));
+  }
+}
 
 class Compiler::Alias {
 public:
@@ -670,6 +686,8 @@ void Compiler::Node::loadFinalSchema(const SchemaLoader& loader) {
 void Compiler::Node::traverse(uint eagerness, std::unordered_map<Node*, uint>& seen,
                               const SchemaLoader& finalLoader,
                               kj::Vector<schema::Node::SourceInfo::Reader>& sourceInfo) {
+  checkStack();
+
   uint& slot = seen[this];
   if ((slot & eagerness) == eagerness) {
     // We've already covered this node.
@@ -984,6 +1002,10 @@ kj::Maybe<Type> Compiler::Node::resolveBootstrapType(schema::Type::Reader type, 
   KJ_IF_MAYBE(exception, kj::runCatchingExceptions([&]() {
     result = module->getCompiler().getWorkspace().bootstrapLoader.getType(type, scope);
   })) {
+    if (exception->getType() == kj::Exception::Type::OVERLOADED) {
+      // The stack check fired in a nested compilation, not a bootstrap failure.
+      kj::throwFatalException(kj::mv(*exception));
+    }
     result = nullptr;
     if (!module->getErrorReporter().hadErrors()) {
       addError(kj::str("Internal compiler bug: Bootstrap schema failed to load:\n",
