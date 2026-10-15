@@ -267,6 +267,9 @@ void setStackCheck(void (*check)());
 void checkStack();
 // Runs the hook installed by setStackCheck(), if any. Used internally by the compiler.
 
+[[noreturn]] void throwNestedTooDeeply();
+// Throws the OVERLOADED "Schema is nested too deeply." exception. Used internally by the compiler.
+
 }  // namespace compiler
 }  // namespace capnp
 

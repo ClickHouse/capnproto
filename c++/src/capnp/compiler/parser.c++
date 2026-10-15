@@ -25,6 +25,7 @@
 
 #include "parser.h"
 #include "type-id.h"
+#include "compiler.h"
 #include <capnp/dynamic.h>
 #include <kj/debug.h>
 #include <kj/encoding.h>
@@ -563,6 +564,13 @@ CapnpParser::CapnpParser(Orphanage orphanageParam, ErrorReporter& errorReporterP
                   })))),
       [](Orphan<Expression>&& base, kj::Array<Orphan<Expression>>&& suffixes)
           -> Orphan<Expression> {
+        // Each suffix nests the expression one level deeper, and the resulting tree is later
+        // compiled and destroyed recursively, so bound it before building it.
+        static constexpr size_t MAX_SUFFIXES = 64;
+        if (suffixes.size() > MAX_SUFFIXES) {
+          throwNestedTooDeeply();
+        }
+
         // Apply all the suffixes to the base expression.
         uint startByte = base.getReader().getStartByte();
         for (auto& suffix: suffixes) {

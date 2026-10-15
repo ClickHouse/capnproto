@@ -45,12 +45,25 @@ void setStackCheck(void (*check)()) {
   stackCheck.store(check, std::memory_order_relaxed);
 }
 
+void throwNestedTooDeeply() {
+  kj::throwFatalException(KJ_EXCEPTION(OVERLOADED, "Schema is nested too deeply."));
+}
+
 void checkStack() {
   auto check = stackCheck.load(std::memory_order_relaxed);
   if (check != nullptr && kj::runCatchingExceptions(check) != nullptr) {
-    kj::throwFatalException(KJ_EXCEPTION(OVERLOADED, "Schema is nested too deeply."));
+    throwNestedTooDeeply();
   }
 }
+
+namespace {
+void rethrowIfNestedTooDeeply(kj::Exception& exception) {
+  // The stack check fired in a nested compilation; it is not a failure of this node.
+  if (exception.getType() == kj::Exception::Type::OVERLOADED) {
+    kj::throwFatalException(kj::mv(exception));
+  }
+}
+}  // namespace
 
 class Compiler::Alias {
 public:
@@ -580,6 +593,7 @@ kj::Maybe<Compiler::Node::Content&> Compiler::Node::getContent(Content::State mi
         }
         content.bootstrapSchema = workspace.bootstrapLoader.loadOnce(nodeSet.node);
       })) {
+        rethrowIfNestedTooDeeply(*exception);
         content.bootstrapSchema = nullptr;
         // Only bother to report validation failures if we think we haven't seen any errors.
         // Otherwise we assume that the errors caused the validation failure.
@@ -669,6 +683,8 @@ void Compiler::Node::loadFinalSchema(const SchemaLoader& loader) {
         loadedFinalSchema = loader.loadOnce(*finalSchema).getProto();
       }
     })) {
+      rethrowIfNestedTooDeeply(*exception);
+
       // Schema validation threw an exception.
 
       // Don't try loading this again.
@@ -1002,10 +1018,7 @@ kj::Maybe<Type> Compiler::Node::resolveBootstrapType(schema::Type::Reader type, 
   KJ_IF_MAYBE(exception, kj::runCatchingExceptions([&]() {
     result = module->getCompiler().getWorkspace().bootstrapLoader.getType(type, scope);
   })) {
-    if (exception->getType() == kj::Exception::Type::OVERLOADED) {
-      // The stack check fired in a nested compilation, not a bootstrap failure.
-      kj::throwFatalException(kj::mv(*exception));
-    }
+    rethrowIfNestedTooDeeply(*exception);
     result = nullptr;
     if (!module->getErrorReporter().hadErrors()) {
       addError(kj::str("Internal compiler bug: Bootstrap schema failed to load:\n",
